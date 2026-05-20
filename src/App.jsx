@@ -11,6 +11,11 @@ import './App.css'
 function App() {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
+  
+  const [startDateInput, setStartDateInput] = useState('')
+  const [endDateInput, setEndDateInput] = useState('')
+  const [searchTermInput, setSearchTermInput] = useState('')
+
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
@@ -350,6 +355,9 @@ function App() {
   }, [sortedConsolidatedData, searchTerm, startDate, endDate, isFiltered])
 
   const handleSearch = () => {
+    setSearchTerm(searchTermInput)
+    setStartDate(startDateInput)
+    setEndDate(endDateInput)
     setShowData(true)
   }
 
@@ -377,12 +385,14 @@ function App() {
       </header>
 
       <main className="flex-col">
-        {/* Controls Section */}
-        <section className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {/* Row 1: Upload + Search */}
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <div className="flex-col" style={{ gap: '0.5rem', textAlign: 'left', flex: '1 1 200px' }}>
-              <label style={{ fontSize: '0.9rem', opacity: 0.7 }}>อัปโหลดไฟล์ Excel</label>
+        {/* Controls Section - Redesigned */}
+        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+          
+          {/* Card 1: Data Import */}
+          <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'left' }}>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.8rem' }}>นำเข้าข้อมูล (Import)</h3>
+            <div className="flex-col" style={{ gap: '0.5rem' }}>
+              <label style={{ fontSize: '0.9rem', opacity: 0.7 }}>อัปโหลดไฟล์รายงาน Shopee (Excel/CSV)</label>
               <div style={{ position: 'relative' }}>
                 <input 
                   type="file" 
@@ -390,43 +400,77 @@ function App() {
                   onChange={handleFileUpload}
                   style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer', zIndex: 2 }}
                 />
-                <button style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                  <Upload size={18} /> {loading ? 'กำลังประมวลผล...' : 'เลือกไฟล์ Shopee'}
+                <button style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem' }}>
+                  <Upload size={18} /> {loading ? 'กำลังประมวลผล...' : 'เลือกไฟล์เพื่ออัปโหลด'}
                 </button>
               </div>
+            </div>
+            <button 
+              onClick={handleRecalculateInvoices}
+              style={{ 
+                marginTop: 'auto', 
+                width: '100%', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                gap: '0.5rem',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: '#ef4444',
+                fontSize: '0.85rem',
+                padding: '0.6rem'
+              }}
+            >
+              <FileText size={16} /> เรียงลำดับและรันเลขเอกสารใหม่ทั้งหมด
+            </button>
+          </div>
+
+          {/* Card 2: Export */}
+          <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'left' }}>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.8rem' }}>ส่งออกข้อมูล (Export)</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', height: '100%', justifyContent: 'center' }}>
               <button 
-                onClick={handleRecalculateInvoices}
-                style={{ 
-                  marginTop: '0.5rem', 
-                  width: '100%', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  gap: '0.5rem',
-                  backgroundColor: 'transparent',
-                  border: '1px solid #ef4444',
-                  color: '#ef4444',
-                  fontSize: '0.8rem',
-                  padding: '0.4rem'
-                }}
+                onClick={() => generateBulkInvoicesPDF(filteredData)}
+                disabled={filteredData.length === 0}
+                style={{ backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', opacity: filteredData.length === 0 ? 0.5 : 1 }}
               >
-                <FileText size={14} /> รันเลขเอกสารใหม่ทั้งหมด
+                <Download size={18} style={{ marginRight: '0.5rem' }} /> Export Invoices PDF ({filteredData.length})
+              </button>
+              <button 
+                onClick={() => generateTaxSummaryPDF(filteredData, { start: startDate || 'All', end: endDate || 'All' })} 
+                disabled={filteredData.length === 0}
+                style={{ backgroundColor: '#10b981', opacity: filteredData.length === 0 ? 0.5 : 1 }}
+              >
+                <FileText size={18} style={{ marginRight: '0.5rem' }} /> Export Tax Summary (รายงานภาษี)
+              </button>
+              <button 
+                onClick={exportExcel} 
+                disabled={filteredData.length === 0}
+                style={{ backgroundColor: '#3b82f6', opacity: filteredData.length === 0 ? 0.5 : 1 }}
+              >
+                <Download size={18} style={{ marginRight: '0.5rem' }} /> Export to Excel
               </button>
             </div>
+          </div>
 
-            <div className="flex-col" style={{ gap: '0.5rem', textAlign: 'left', flex: '2 1 300px' }}>
-              <label style={{ fontSize: '0.9rem', opacity: 0.7 }}>ค้นหา</label>
+          {/* Card 3: Filter & Search */}
+          <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'left' }}>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.8rem' }}>ค้นหาและตัวกรอง (Filter)</h3>
+            
+            <div className="flex-col" style={{ gap: '0.5rem' }}>
+              <label style={{ fontSize: '0.9rem', opacity: 0.7 }}>ค้นหา Order ID / ลูกค้า</label>
               <div style={{ position: 'relative' }}>
                 <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }} />
                 <input 
                   type="text" 
-                  placeholder="Order ID / Customer..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="พิมพ์คำค้นหา..."
+                  value={searchTermInput}
+                  onChange={(e) => setSearchTermInput(e.target.value)}
                   style={{ 
                     width: '100%', 
+                    boxSizing: 'border-box',
                     padding: '0.6rem 1rem 0.6rem 2.5rem', 
-                    borderRadius: '12px', 
+                    borderRadius: '8px', 
                     border: '1px solid rgba(255,255,255,0.1)',
                     background: 'rgba(255,255,255,0.05)',
                     color: 'white'
@@ -434,60 +478,34 @@ function App() {
                 />
               </div>
             </div>
-          </div>
 
-          {/* Row 2: Date Range + Search Button */}
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'end' }}>
-            <div className="flex-col" style={{ gap: '0.5rem', textAlign: 'left', flex: '1 1 150px' }}>
-              <label style={{ fontSize: '0.9rem', opacity: 0.7 }}>วันที่เริ่มต้น</label>
-              <input 
-                type="date" 
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                style={{ 
-                  width: '100%', 
-                  padding: '0.5rem', 
-                  borderRadius: '8px', 
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  background: 'rgba(255,255,255,0.05)',
-                  color: 'white',
-                  fontSize: '0.85rem'
-                }}
-              />
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <div className="flex-col" style={{ gap: '0.5rem', flex: 1 }}>
+                <label style={{ fontSize: '0.9rem', opacity: 0.7 }}>เริ่มต้น</label>
+                <input 
+                  type="date" 
+                  value={startDateInput}
+                  onChange={(e) => setStartDateInput(e.target.value)}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: '0.85rem' }}
+                />
+              </div>
+              <div className="flex-col" style={{ gap: '0.5rem', flex: 1 }}>
+                <label style={{ fontSize: '0.9rem', opacity: 0.7 }}>สิ้นสุด</label>
+                <input 
+                  type="date" 
+                  value={endDateInput}
+                  onChange={(e) => setEndDateInput(e.target.value)}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: '0.85rem' }}
+                />
+              </div>
             </div>
-            <div className="flex-col" style={{ gap: '0.5rem', textAlign: 'left', flex: '1 1 150px' }}>
-              <label style={{ fontSize: '0.9rem', opacity: 0.7 }}>วันที่สิ้นสุด</label>
-              <input 
-                type="date" 
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                style={{ 
-                  width: '100%', 
-                  padding: '0.5rem', 
-                  borderRadius: '8px', 
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  background: 'rgba(255,255,255,0.05)',
-                  color: 'white',
-                  fontSize: '0.85rem'
-                }}
-              />
-            </div>
-            <div style={{ flex: '0 0 auto' }}>
-              <button 
-                onClick={handleSearch}
-                style={{ 
-                  backgroundColor: '#3b82f6', 
-                  color: 'white',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  padding: '0.6rem 2rem'
-                }}
-              >
-                <Search size={18} /> ค้นหา
-              </button>
-            </div>
+            
+            <button 
+              onClick={handleSearch}
+              style={{ backgroundColor: '#3b82f6', marginTop: 'auto', padding: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+            >
+              <Search size={16} /> ยืนยันการค้นหา
+            </button>
           </div>
         </section>
 
@@ -540,27 +558,7 @@ function App() {
         {/* Charts Section */}
         {showData && filteredData.length > 0 && <AnalyticsCharts data={filteredData} />}
 
-        {/* Actions Section */}
-        {showData && filteredData.length > 0 && (
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '2rem' }}
-          >
-            <button 
-              onClick={() => generateBulkInvoicesPDF(filteredData)}
-              style={{ backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)' }}
-            >
-              <Download size={18} style={{ marginRight: '0.5rem' }} /> Export Invoices ({filteredData.length})
-            </button>
-            <button onClick={exportExcel} style={{ backgroundColor: '#3b82f6' }}>
-              <Download size={18} style={{ marginRight: '0.5rem' }} /> Export Excel
-            </button>
-            <button onClick={() => generateTaxSummaryPDF(filteredData, { start: startDate || 'All', end: endDate || 'All' })} style={{ backgroundColor: '#10b981' }}>
-              <FileText size={18} style={{ marginRight: '0.5rem' }} /> Export Tax Summary
-            </button>
-          </motion.div>
-        )}
+        {/* Actions Section Removed - Moved to Top Cards */}
 
         {/* Data Table */}
         {showData && <SummaryTable data={filteredData} />}
