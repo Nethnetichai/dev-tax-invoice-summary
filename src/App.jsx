@@ -138,7 +138,11 @@ function App() {
       const orderInvoiceMap = { ...existingInvoices };
       
       // Sort new orders by date to assign sequential numbers
-      const sortedNewData = [...parsedData].sort((a, b) => new Date(a.orderDate) - new Date(b.orderDate));
+      const sortedNewData = [...parsedData].sort((a, b) => {
+        const dateA = a.orderDate ? new Date(a.orderDate).getTime() : 0;
+        const dateB = b.orderDate ? new Date(b.orderDate).getTime() : 0;
+        return dateA - dateB;
+      });
       
       // Chronological Check
       const hasOlderDate = sortedNewData.some(item => {
@@ -155,16 +159,16 @@ function App() {
       }
 
       sortedNewData.forEach(item => {
-        if (!orderInvoiceMap[item.orderId]) {
+        if (item.orderDate && !orderInvoiceMap[item.orderId]) {
           maxRunning++;
-          const datePart = item.orderDate ? item.orderDate.split(' ')[0].replace(/-/g, '') : '20260101';
+          const datePart = item.orderDate.split(' ')[0].replace(/-/g, '');
           orderInvoiceMap[item.orderId] = `${datePart}-${String(maxRunning).padStart(4, '0')}`;
         }
       });
 
       const finalDataToInsert = parsedData.map(item => ({
         ...item,
-        invoiceNo: orderInvoiceMap[item.orderId]
+        invoiceNo: item.orderDate ? orderInvoiceMap[item.orderId] : null
       }));
 
       // ดึง orderId ที่ไม่ซ้ำกันจากข้อมูลใหม่ เพื่อลบแล้วแทนที่
@@ -226,21 +230,25 @@ function App() {
       const { data: allData, error } = await supabase.from('tax_invoices').select('*');
       if (error) throw error;
 
-      const sorted = [...allData].sort((a, b) => new Date(a.orderDate) - new Date(b.orderDate));
+      const sorted = [...allData].sort((a, b) => {
+        const dateA = a.orderDate ? new Date(a.orderDate).getTime() : 0;
+        const dateB = b.orderDate ? new Date(b.orderDate).getTime() : 0;
+        return dateA - dateB;
+      });
       
       const orderInvoiceMap = {};
       let seq = 0;
       sorted.forEach(item => {
-         if (!orderInvoiceMap[item.orderId]) {
+         if (item.orderDate && !orderInvoiceMap[item.orderId]) {
             seq++;
-            const datePart = item.orderDate ? item.orderDate.split(' ')[0].replace(/-/g, '') : '20260101';
+            const datePart = item.orderDate.split(' ')[0].replace(/-/g, '');
             orderInvoiceMap[item.orderId] = `${datePart}-${String(seq).padStart(4, '0')}`;
          }
       });
 
       const recordsToUpdate = sorted.map(item => ({
          ...item,
-         invoiceNo: orderInvoiceMap[item.orderId]
+         invoiceNo: item.orderDate ? orderInvoiceMap[item.orderId] : null
       }));
 
       const chunkSize = 100;
@@ -327,7 +335,11 @@ function App() {
   }, [data])
 
   const sortedConsolidatedData = useMemo(() => {
-    return [...consolidatedData].sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+    return [...consolidatedData].sort((a, b) => {
+      const dateA = a.orderDate ? new Date(a.orderDate).getTime() : 0;
+      const dateB = b.orderDate ? new Date(b.orderDate).getTime() : 0;
+      return dateB - dateA;
+    });
   }, [consolidatedData])
 
   const isFiltered = useMemo(() => {
@@ -335,14 +347,20 @@ function App() {
   }, [searchTerm, startDate, endDate])
 
   const filteredData = useMemo(() => {
-    const filtered = sortedConsolidatedData.filter(item => {
+    // กรองเอาเฉพาะข้อมูลที่มีเลข Invoice แล้วเท่านั้น (ออเดอร์ที่ถูกส่งสินค้าแล้ว)
+    const validData = sortedConsolidatedData.filter(item => item.invoiceNo);
+    
+    const filtered = validData.filter(item => {
       const matchSearch = item.orderId?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           item.customerName?.toLowerCase().includes(searchTerm.toLowerCase())
       
       let matchDate = true
-      if (startDate && endDate) {
-        const itemDate = new Date(item.orderDate)
-        matchDate = itemDate >= new Date(startDate) && itemDate <= new Date(endDate)
+      if (startDate || endDate) {
+        const itemDateStr = item.orderDate ? item.orderDate.split(' ')[0] : '';
+        const itemDate = new Date(itemDateStr).getTime();
+        const start = startDate ? new Date(startDate).getTime() : 0;
+        const end = endDate ? new Date(endDate).getTime() : Infinity;
+        matchDate = itemDate >= start && itemDate <= end;
       }
       
       return matchSearch && matchDate

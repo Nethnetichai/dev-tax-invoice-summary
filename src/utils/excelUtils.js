@@ -34,7 +34,8 @@ export const parseShopeeExcel = (file) => {
           const orderId = row['หมายเลขคำสั่งซื้อ'];
           const customerName = row['ชื่อผู้ใช้ (ผู้ซื้อ)'] || 'ลูกค้า Shopee';
           const address = row['ที่อยู่ในการจัดส่ง'] || '-';
-          const orderDate = row['วันที่ทำการสั่งซื้อ'];
+          // ดึงวันที่จาก "เวลาส่งสินค้า" แทน "วันที่ทำการสั่งซื้อ" ตาม Requirement (ถ้าไม่มีให้เป็นค่าว่าง)
+          const orderDate = row['เวลาส่งสินค้า'] || '';
           const productName = row['ชื่อสินค้า'] || 'สินค้า Shopee';
           const sku = row['เลขรหัส SKU'] || '-';
           
